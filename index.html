@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTK Vocabulary</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+            text-align: center;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; color: #2c3e50; }
+        p { color: #666; }
+        .input-group { margin: 20px 0; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="number"] {
+            padding: 10px;
+            font-size: 16px;
+            width: 100px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #status { margin-top: 20px; font-size: 14px; min-height: 20px; }
+        .note { font-size: 12px; color: #999; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>JP RTK Vocabulary Filter</h1>
+    <p>Download a list of Japanese words containing only kanji you have learned.</p>
+
+    <div class="input-group">
+        <label for="chapterInput">Last Completed RTK Chapter:</label>
+        <input type="number" id="chapterInput" min="0" max="99" value="10">
+        <div class="note">Enter 0 for Kana-only words. Enter 99 for all words.</div>
+    </div>
+
+    <button id="downloadBtn" onclick="processData()">Download Filtered CSV</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    // Configuration
+    const CSV_FILENAME = 'jp_freq_translation_reading.csv'; // Must match your filename exactly
+
+    function processData() {
+        const chapterLimit = parseInt(document.getElementById('chapterInput').value, 10);
+        const btn = document.getElementById('downloadBtn');
+        const status = document.getElementById('status');
+
+        if (isNaN(chapterLimit)) {
+            status.textContent = "Please enter a valid chapter number.";
+            return;
+        }
+
+        btn.disabled = true;
+        status.textContent = "Loading and processing data...";
+
+        Papa.parse(CSV_FILENAME, {
+            download: true,
+            header: true,
+            delimiter: ";", // Important: Your file uses semicolons
+            skipEmptyLines: true,
+            complete: function(results) {
+                if (results.errors.length > 0) {
+                    console.error("Errors:", results.errors);
+                    status.textContent = "Error loading CSV file.";
+                    btn.disabled = false;
+                    return;
+                }
+
+                const allRows = results.data;
+                
+                // Filter rows based on Heisig_chapter
+                const filteredRows = allRows.filter(row => {
+                    // Parse the chapter column as an integer
+                    const rowChapter = parseInt(row.Heisig_chapter, 10);
+                    // Check if parsing succeeded and if it's within the user's limit
+                    return !isNaN(rowChapter) && rowChapter <= chapterLimit;
+                });
+
+                if (filteredRows.length === 0) {
+                    status.textContent = "No words found for this chapter range.";
+                    btn.disabled = false;
+                    return;
+                }
+
+                // Convert back to CSV
+                const csvString = Papa.unparse(filteredRows, {
+                    delimiter: ";"
+                });
+
+                // Trigger Download
+                downloadCSV(csvString, `jp_freq_ch${chapterLimit}.csv`);
+                
+                status.textContent = `Success! Downloaded ${filteredRows.length} words.`;
+                btn.disabled = false;
+            },
+            error: function(err) {
+                console.error("Fetch error:", err);
+                status.textContent = "Could not find the CSV file. Make sure it is in the same folder.";
+                btn.disabled = false;
+            }
+        });
+    }
+
+    function downloadCSV(csvString, filename) {
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        
+        // Create a download link
+        if (navigator.msSaveBlob) { // IE 10+
+            navigator.msSaveBlob(blob, filename);
+        } else {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+</script>
+
+</body>
+</html>
