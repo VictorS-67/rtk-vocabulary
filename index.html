@@ -8,7 +8,7 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            max-width: 600px;
+            max-width: 1200px;
             margin: 40px auto;
             padding: 20px;
             background-color: #f4f4f9;
@@ -20,6 +20,8 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto 30px auto;
         }
         h1 { margin-top: 0; color: #2c3e50; }
         p { color: #666; }
@@ -30,13 +32,20 @@
             padding: 10px;
             font-size: 16px;
             width: 100%;
-            box-sizing: border-box; /* Ensures padding doesn't widen element */
+            box-sizing: border-box;
             border: 1px solid #ddd;
             border-radius: 4px;
             background-color: #fff;
         }
         
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
         button {
+            flex: 1;
             background-color: #3498db;
             color: white;
             border: none;
@@ -45,26 +54,133 @@
             border-radius: 4px;
             cursor: pointer;
             transition: background 0.2s;
-            width: 100%;
-            margin-top: 20px;
         }
         button:hover { background-color: #2980b9; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
         
+        #downloadBtn {
+            background-color: #27ae60;
+            display: none; /* Hidden by default */
+        }
+        #downloadBtn:hover { background-color: #219150; }
+
         #status { margin-top: 20px; font-size: 14px; min-height: 20px; }
         .note { font-size: 12px; color: #999; margin-top: 5px; }
+
+        /* Grid Styles */
+        .word-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            width: 100%;
+        }
+
+        .word-card {
+            background: white;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            padding: 15px 10px;
+            text-align: center;
+            position: relative;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 80px;
+        }
+
+        .word-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #3498db;
+            z-index: 5;
+        }
+
+        .kanji-word {
+            font-size: 1.8em;
+            color: #2c3e50;
+            line-height: 1.2;
+            margin-bottom: 5px;
+        }
+
+        ruby {
+            ruby-position: over;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        rt {
+            font-size: 0.5em; 
+            line-height: 1.2;
+            margin-bottom: 0; 
+        }
+
+        .heisig-num {
+            font-size: 0.75em;
+            color: #95a5a6;
+            margin-top: auto; /* Push to bottom if height varies */
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Tooltip styling using data attributes */
+        .word-card[data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            white-space: normal;
+            max-width: 200px;
+            width: max-content;
+            z-index: 10;
+            opacity: 0;
+            animation: fadeIn 0.2s forwards;
+            pointer-events: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            margin-bottom: 8px; /* space between card and tooltip */
+        }
+        
+        /* Tooltip Arrow */
+        .word-card[data-tooltip]:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+            z-index: 10;
+            opacity: 0;
+            animation: fadeIn 0.2s forwards;
+            margin-bottom: -4px; /* overlap to connect */
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h1>JP RTK Vocabulary Filter</h1>
-    <p>Download a custom list of Japanese words based on your RTK progress and desired word apparition frequency.</p>
+    <p>View and download Japanese words based on your RTK progress and frequency.</p>
 
     <div class="input-group">
         <label for="chapterInput">Last Completed RTK Chapter:</label>
         <input type="number" id="chapterInput" min="0" max="99" value="10">
-        <div class="note">Enter 0 for Kana-only words. Enter 99 for all words, including those using kanjis not in RTK.</div>
+        <div class="note">Enter 0 for Kana-only. Enter 99 for all words.</div>
     </div>
 
     <div class="input-group">
@@ -75,30 +191,47 @@
             <option value="10" selected>Standard (Top ~5,000 words)</option>
             <option value="30">Core Only (Top ~2,000 words)</option>
         </select>
-        <div class="note">Filters out rarer words to keep your list manageable.</div>
+        <div class="note">Filters out rarer words.</div>
     </div>
 
-    <button id="downloadBtn" onclick="processData()">Download Filtered CSV</button>
+    <div class="input-group" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <input type="checkbox" id="kanjiOnlyInput" style="width: auto; margin: 0;">
+        <label for="kanjiOnlyInput" style="margin: 0; font-weight: normal; cursor: pointer; text-align: left;">Only show Words with Kanjis present in the RTK</label>
+    </div>
+
+    <div class="btn-group">
+        <button id="showBtn" onclick="processData()">Filter & Show Words</button>
+        <button id="downloadBtn" onclick="downloadCurrentData()">Download CSV</button>
+    </div>
     <div id="status"></div>
 </div>
 
+<div id="wordGrid" class="word-grid"></div>
+
 <script>
-    // Configuration
     const CSV_FILENAME = 'jp_freq_translation_reading.csv'; 
+    let currentFilteredRows = [];
+    let currentChapterLimit = 0;
+    let currentFreqLimit = 0;
 
     function processData() {
         const chapterLimit = parseInt(document.getElementById('chapterInput').value, 10);
         const freqLimit = parseFloat(document.getElementById('freqInput').value);
-        const btn = document.getElementById('downloadBtn');
+        const kanjiOnly = document.getElementById('kanjiOnlyInput').checked;
+        const showBtn = document.getElementById('showBtn');
+        const dlBtn = document.getElementById('downloadBtn');
         const status = document.getElementById('status');
+        const grid = document.getElementById('wordGrid');
 
         if (isNaN(chapterLimit)) {
             status.textContent = "Please enter a valid chapter number.";
             return;
         }
 
-        btn.disabled = true;
+        showBtn.disabled = true;
+        dlBtn.style.display = 'none';
         status.textContent = "Loading and processing data...";
+        grid.innerHTML = ''; // Clear previous results
 
         Papa.parse(CSV_FILENAME, {
             download: true,
@@ -106,61 +239,96 @@
             delimiter: ";",
             skipEmptyLines: true,
             complete: function(results) {
+                showBtn.disabled = false;
+
                 if (results.errors.length > 0) {
                     console.error("Errors:", results.errors);
-                    status.textContent = "Error loading CSV file. Check console.";
-                    btn.disabled = false;
+                    status.textContent = "Error loading CSV file.";
                     return;
                 }
 
                 const allRows = results.data;
                 
-                // Filter rows based on Chapter AND Frequency
+                // Filter rows
                 const filteredRows = allRows.filter(row => {
                     const rowChapter = parseInt(row.Heisig_chapter, 10);
                     const rowFreq = parseFloat(row.Frequency);
 
-                    // Check validation
                     if (isNaN(rowChapter) || isNaN(rowFreq)) return false;
+const basicMatch = rowChapter <= chapterLimit && rowFreq >= freqLimit;
 
-                    // Apply filters
-                    const chapterCondition = rowChapter <= chapterLimit;
-                    const freqCondition = rowFreq >= freqLimit; // Higher frequency score = more common
+                    // Filter out Kana-only (chap 0) and Non-RTK (chap 99) if checkbox checked
+                    if (kanjiOnly && (rowChapter === 0 || rowChapter === 99)) {
+                        return false;
+                    }
 
-                    return chapterCondition && freqCondition;
+                    return basicMatch
+                    return rowChapter <= chapterLimit && rowFreq >= freqLimit;
                 });
 
                 if (filteredRows.length === 0) {
                     status.textContent = "No words found matching these criteria.";
-                    btn.disabled = false;
                     return;
                 }
 
-                // Convert back to CSV
-                const csvString = Papa.unparse(filteredRows, {
-                    delimiter: ";"
-                });
-
-                // Generate filename based on settings
-                // e.g., jp_freq_ch10_minfreq10.csv
-                const filename = `jp_freq_ch${chapterLimit}_minfreq${freqLimit}.csv`;
-
-                // Trigger Download
-                downloadCSV(csvString, filename);
+                // Update Process State
+                currentFilteredRows = filteredRows;
+                currentChapterLimit = chapterLimit;
+                currentFreqLimit = freqLimit;
                 
-                status.textContent = `Success! Downloaded ${filteredRows.length} words.`;
-                btn.disabled = false;
+                // Render Grid
+                renderGrid(filteredRows);
+                
+                // Show Download Button
+                dlBtn.style.display = 'block';
+                dlBtn.textContent = `Download CSV (${filteredRows.length} words)`;
+                status.textContent = `Found ${filteredRows.length} words.`;
             },
             error: function(err) {
                 console.error("Fetch error:", err);
                 status.textContent = "Could not load file. Ensure it is uploaded to GitHub.";
-                btn.disabled = false;
+                showBtn.disabled = false;
             }
         });
     }
 
-    function downloadCSV(csvString, filename) {
-        // Add BOM for Excel compatibility
+    function renderGrid(rows) {
+        const grid = document.getElementById('wordGrid');
+        
+        // Performance optimization: Build HTML string
+        const html = rows.map(row => {
+            const word = row.Word;
+            const reading = row.Reading;
+            // Escape quotes for tooltip attribute
+            const english = (row.English || '').replace(/"/g, '&quot;'); 
+            // Clean Heisig numbers: [1, 2] -> 1, 2
+            const heisig = (row.Heisig_numbers || '').replace(/[\[\]]/g, '');
+
+            // Determine display with Furigana
+            // Logic: If Reading exists and is different from Word, assume Kanji and use Ruby.
+            // Note: This puts ruby over the *entire* word, which is the requested behavior ("furigana appearing on top").
+            let content = word;
+            if (reading && reading !== word) {
+                content = `<ruby>${word}<rt>${reading}</rt></ruby>`;
+            }
+
+            return `
+                <div class="word-card" data-tooltip="${english}">
+                    <div class="kanji-word">${content}</div>
+                    <div class="heisig-num">${heisig ? '#' + heisig : ''}</div>
+                </div>
+            `;
+        }).join('');
+
+        grid.innerHTML = html;
+    }
+
+    function downloadCurrentData() {
+        if (!currentFilteredRows.length) return;
+
+        const csvString = Papa.unparse(currentFilteredRows, { delimiter: ";" });
+        const filename = `jp_freq_ch${currentChapterLimit}_minfreq${currentFreqLimit}.csv`;
+        
         const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
         
         if (navigator.msSaveBlob) {
@@ -170,12 +338,10 @@
 
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        
         link.setAttribute("href", url);
         link.setAttribute("download", filename);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
-        
         link.click();
         
         setTimeout(() => {
