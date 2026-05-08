@@ -1,0 +1,48 @@
+RTK Companion — Dataset License
+================================
+
+The CSV dataset files in this repository are derivative works based on the
+Leeds Archive of Japanese Words via ManyThings.org.
+
+Dataset files covered by this license:
+- jp_freq_translation_reading.csv
+- heisig_kanjis.csv
+- jokugos_freq_db_heisig_hiragana.csv
+- and any additional CSV data files added under this same license.
+
+This derivative dataset is licensed under the Creative Commons Attribution
+4.0 International License (CC BY 4.0). To view a copy of this license,
+visit https://creativecommons.org/licenses/by/4.0/
+
+Original Source
+---------------
+Leeds Archive of Japanese Words via ManyThings.org
+  https://www.manythings.org/japanese/words/leeds/
+Distributed by the original maintainer under the Creative Commons Attribution
+2.5 Generic License (CC BY 2.5):
+  https://creativecommons.org/licenses/by/2.5/
+
+Modifications
+-------------
+- English translations and grammatical-function annotations added.
+- Heisig (RTK) frame numbers and chapter assignments added
+  (Heisig_numbers, Heisig_chapter columns).
+- Kana-only words classified into 5 tiers (kana_tier column) and tagged with
+  a kind classification (kind column: vocab | morpheme | loanword), per the
+  RTK Companion kana tier system.
+- Three rows added that were absent from the upstream corpus:
+  あんな, それなら, ください.
+
+Attribution
+-----------
+When using or redistributing this dataset (or derivatives thereof), please
+attribute:
+- The original Leeds Archive of Japanese Words via ManyThings.org (CC BY 2.5).
+- The RTK Companion project as the source of the modifications described above.
+
+Note on RTK
+-----------
+The Heisig chapter and frame numbers in this dataset are factual references
+to the book "Remembering the Kanji" by James W. Heisig. The RTK Companion
+project is not affiliated with, nor endorsed by, James Heisig or the
+publisher.

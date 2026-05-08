@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RTK Vocabulary</title>
+    <title>RTK Companion — Vocabulary Filter</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body {
@@ -174,13 +174,13 @@
 <body>
 
 <div class="card">
-    <h1>JP RTK Vocabulary Filter</h1>
+    <h1>RTK Companion — Vocabulary Filter</h1>
     <p>View and download Japanese words based on your RTK progress and frequency.</p>
 
     <div class="input-group">
         <label for="chapterInput">Last Completed RTK Chapter:</label>
         <input type="number" id="chapterInput" min="0" max="99" value="10">
-        <div class="note">Enter 0 for Kana-only. Enter 99 for all words.</div>
+        <div class="note">Kana words unlock progressively across chapters. Enter 99 for all words.</div>
     </div>
 
     <div class="input-group">
@@ -209,7 +209,12 @@
 <div id="wordGrid" class="word-grid"></div>
 
 <script>
-    const CSV_FILENAME = 'jp_freq_translation_reading.csv'; 
+    const CSV_FILENAME = 'jp_freq_translation_reading.csv';
+
+    // Kana tier → minimum RTK chapter at which the tier unlocks.
+    // See FUTURE_PLANS.md "Kana tier system migration" — tunable.
+    const KANA_TIER_UNLOCKS = { 1: 0, 2: 1, 3: 10, 4: 25, 5: 40 };
+
     let currentFilteredRows = [];
     let currentChapterLimit = 0;
     let currentFreqLimit = 0;
@@ -255,15 +260,27 @@
                     const rowFreq = parseFloat(row.Frequency);
 
                     if (isNaN(rowChapter) || isNaN(rowFreq)) return false;
-const basicMatch = rowChapter <= chapterLimit && rowFreq >= freqLimit;
 
-                    // Filter out Kana-only (chap 0) and Non-RTK (chap 99) if checkbox checked
-                    if (kanjiOnly && (rowChapter === 0 || rowChapter === 99)) {
-                        return false;
+                    // Always exclude grammatical morphemes — they aren't vocabulary.
+                    if (row.kind === 'morpheme') return false;
+
+                    // Frequency cutoff
+                    if (rowFreq < freqLimit) return false;
+
+                    // Kanji-only checkbox: skip kana entries (ch 0) and non-RTK kanji (ch 99)
+                    if (kanjiOnly && (rowChapter === 0 || rowChapter === 99)) return false;
+
+                    // Kanji vocabulary: unlock by RTK chapter directly
+                    if (rowChapter !== 0) {
+                        return rowChapter <= chapterLimit;
                     }
 
-                    return basicMatch
-                    return rowChapter <= chapterLimit && rowFreq >= freqLimit;
+                    // Kana entry: unlock by kana_tier threshold
+                    const kanaTier = parseInt(row.kana_tier, 10);
+                    if (isNaN(kanaTier)) return false;
+                    const unlockChapter = KANA_TIER_UNLOCKS[kanaTier];
+                    if (unlockChapter === undefined) return false;
+                    return unlockChapter <= chapterLimit;
                 });
 
                 if (filteredRows.length === 0) {
